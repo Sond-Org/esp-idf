@@ -60,9 +60,16 @@ static const char *TAG = "wifi station";
 
 static int s_retry_num = 0;
 
+void print_free_heap_size()
+{
+    uint32_t freeInternalHeapSize = esp_get_free_internal_heap_size();
+    uint32_t freeHeapSize = esp_get_free_heap_size();
+    ESP_LOGW(TAG, "Free internal heap size: %" PRIu32, freeInternalHeapSize);
+    ESP_LOGW(TAG, "Free heap size: %" PRIu32, freeHeapSize);
+}
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
+static void event_handler(void *arg, esp_event_base_t event_base,
+                          int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
@@ -80,6 +87,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_BEACON_TIMEOUT) {
+        ESP_LOGW(TAG, "Beacon timeout");
+        print_free_heap_size();
+
+        ESP_LOGW(TAG, "Disconnecting and reconnecting to the AP");
+        esp_wifi_disconnect();
+        esp_wifi_connect();
     }
 }
 
@@ -121,8 +135,9 @@ void wifi_init_sta(void)
             .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
         },
     };
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+    // ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start() );
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
@@ -160,4 +175,5 @@ void init_wifi(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
+    print_free_heap_size();
 }
