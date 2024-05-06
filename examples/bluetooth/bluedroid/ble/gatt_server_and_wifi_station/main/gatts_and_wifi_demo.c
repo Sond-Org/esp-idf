@@ -137,7 +137,7 @@ static esp_ble_adv_params_t adv_params = {
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     //.peer_addr            =
     //.peer_addr_type       =
-    .channel_map        = ADV_CHNL_ALL,
+    .channel_map        = ADV_CHNL_39,
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
