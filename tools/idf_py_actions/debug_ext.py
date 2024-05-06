@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 import json
 import os
@@ -206,7 +206,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
             raise FatalError('ELF file not found. You need to build & flash the project before running debug targets')
 
         # Recreate empty 'gdbinit' directory
-        gdbinit_dir = os.path.join(project_desc['build_dir'], 'gdbinit')
+        gdbinit_dir = '/'.join([project_desc['build_dir'], 'gdbinit'])
         if os.path.isfile(gdbinit_dir):
             os.remove(gdbinit_dir)
         elif os.path.isdir(gdbinit_dir):
@@ -214,7 +214,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
         os.mkdir(gdbinit_dir)
 
         # Prepare gdbinit for Python GDB extensions import
-        py_extensions = os.path.join(gdbinit_dir, 'py_extensions')
+        py_extensions = '/'.join([gdbinit_dir, 'py_extensions'])
         with open(py_extensions, 'w') as f:
             if is_gdb_with_python(gdb):
                 f.write(GDBINIT_PYTHON_TEMPLATE.format(sys_path=sys.path))
@@ -222,7 +222,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
                 f.write(GDBINIT_PYTHON_NOT_SUPPORTED)
 
         # Prepare gdbinit for related ELFs symbols load
-        symbols = os.path.join(gdbinit_dir, 'symbols')
+        symbols = '/'.join([gdbinit_dir, 'symbols'])
         with open(symbols, 'w') as f:
             boot_elf = get_normalized_path(project_desc['bootloader_elf']) if 'bootloader_elf' in project_desc else None
             if boot_elf and os.path.exists(boot_elf):
@@ -234,7 +234,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
 
         # Generate the gdbinit for target connect if no custom gdbinit is present
         if not gdbinit:
-            gdbinit = os.path.join(gdbinit_dir, 'connect')
+            gdbinit = '/'.join([gdbinit_dir, 'connect'])
             with open(gdbinit, 'w') as f:
                 f.write(GDBINIT_CONNECT)
 
@@ -334,15 +334,21 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
         gdb = project_desc['monitor_toolprefix'] + 'gdb'
         generate_gdbinit_files(gdb, gdbinit, project_desc)
 
-        # this is a workaround for gdbgui
-        # gdbgui is using shlex.split for the --gdb-args option. When the input is:
-        # - '"-x=foo -x=bar"', would return ['foo bar']
-        # - '-x=foo', would return ['-x', 'foo'] and mess up the former option '--gdb-args'
-        # so for one item, use extra double quotes. for more items, use no extra double quotes.
         gdb_args_list = get_gdb_args(project_desc)
-        gdb_args = '"{}"'.format(' '.join(gdb_args_list)) if len(gdb_args_list) == 1 else ' '.join(gdb_args_list)
-        args = ['gdbgui', '-g', gdb, '--gdb-args', gdb_args]
-        print(args)
+        if sys.version_info[:2] >= (3, 11):
+            # If we use Python 3.11+ then the only compatible gdbgui doesn't support the --gdb-args argument. This
+            # check is easier than checking gdbgui version or re-running the process in case of gdb-args-related
+            # failure.
+            gdb_args = ' '.join(gdb_args_list)
+            args = ['gdbgui', '-g', ' '.join((gdb, gdb_args))]
+        else:
+            # this is a workaround for gdbgui
+            # gdbgui is using shlex.split for the --gdb-args option. When the input is:
+            # - '"-x=foo -x=bar"', would return ['foo bar']
+            # - '-x=foo', would return ['-x', 'foo'] and mess up the former option '--gdb-args'
+            # so for one item, use extra double quotes. for more items, use no extra double quotes.
+            gdb_args = '"{}"'.format(' '.join(gdb_args_list)) if len(gdb_args_list) == 1 else ' '.join(gdb_args_list)
+            args = ['gdbgui', '-g', gdb, '--gdb-args', gdb_args]
 
         if gdbgui_port is not None:
             args += ['--port', gdbgui_port]
@@ -354,10 +360,11 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
         # pygdbmi).
         env['PURE_PYTHON'] = '1'
         try:
+            print('Running: ', args)
             process = subprocess.Popen(args, stdout=gdbgui_out, stderr=subprocess.STDOUT, bufsize=1, env=env)
         except (OSError, subprocess.CalledProcessError) as e:
             print(e)
-            if sys.version_info[:2] >= (3, 11):
+            if sys.version_info[:2] >= (3, 11) and sys.platform == 'win32':
                 raise SystemExit('Unfortunately, gdbgui is supported only with Python 3.10 or older. '
                                  'See: https://github.com/espressif/esp-idf/issues/10116. '
                                  'Please use "idf.py gdb" or debug in Eclipse/Vscode instead.')

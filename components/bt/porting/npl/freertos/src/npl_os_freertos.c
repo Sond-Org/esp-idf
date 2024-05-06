@@ -37,11 +37,19 @@ static const char *TAG = "Timer";
 #error "not defined SOC_ESP_NIMBLE_CONTROLLER or SOC_ESP_NIMBLE_CONTROLLER is zero"
 #endif
 
+#if CONFIG_BT_NIMBLE_ENABLED
 #define BLE_HOST_CO_COUNT    (8)
 #define BLE_HOST_EV_COUNT    (11 + BLE_HOST_CO_COUNT)
 #define BLE_HOST_EVQ_COUNT   (3)
 #define BLE_HOST_SEM_COUNT   (10)
 #define BLE_HOST_MUTEX_COUNT (4)
+#else
+#define BLE_HOST_CO_COUNT    (0)
+#define BLE_HOST_EV_COUNT    (0)
+#define BLE_HOST_EVQ_COUNT   (0)
+#define BLE_HOST_SEM_COUNT   (0)
+#define BLE_HOST_MUTEX_COUNT (0)
+#endif
 
 struct os_mempool ble_freertos_ev_pool;
 static os_membuf_t *ble_freertos_ev_buf = NULL;
@@ -133,6 +141,9 @@ npl_freertos_eventq_init(struct ble_npl_eventq *evq)
         memset(eventq, 0, sizeof(*eventq));
         eventq->q = xQueueCreate(ble_freertos_total_event_cnt, sizeof(struct ble_npl_eventq *));
         BLE_LL_ASSERT(eventq->q);
+    } else {
+        eventq = (struct ble_npl_eventq_freertos*)evq->eventq;
+        xQueueReset(eventq->q);
     }
 #else
     if(!evq->eventq) {
@@ -142,6 +153,9 @@ npl_freertos_eventq_init(struct ble_npl_eventq *evq)
         memset(eventq, 0, sizeof(*eventq));
         eventq->q = xQueueCreate(ble_freertos_total_event_cnt, sizeof(struct ble_npl_eventq *));
         BLE_LL_ASSERT(eventq->q);
+    } else {
+        eventq = (struct ble_npl_eventq_freertos*)evq->eventq;
+        xQueueReset(eventq->q);
     }
 #endif
 }

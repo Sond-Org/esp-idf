@@ -577,6 +577,14 @@ void bta_dm_disable (tBTA_DM_MSG *p_data)
     bta_dm_disable_search_and_disc();
     bta_dm_cb.disabling = TRUE;
 
+#if BLE_INCLUDED == TRUE
+    /* reset scan activity status*/
+    btm_cb.ble_ctr_cb.scan_activity = 0;
+
+    /* reset advertising activity status*/
+    btm_cb.ble_ctr_cb.inq_var.state = 0;
+#endif
+
 #if BLE_INCLUDED == TRUE && BTA_GATT_INCLUDED == TRUE
     BTM_BleClearBgConnDev();
 #endif
@@ -825,6 +833,28 @@ void bta_dm_config_eir (tBTA_DM_MSG *p_data)
 
     bta_dm_set_eir(NULL);
 }
+
+/*******************************************************************************
+**
+** Function         bta_dm_set_acl_pkt_types
+**
+** Description      Sets ACL packet types
+**
+**
+** Returns          void
+**
+*******************************************************************************/
+void bta_dm_set_acl_pkt_types (tBTA_DM_MSG *p_data)
+{
+    if (p_data->set_acl_pkt_types.set_acl_pkt_types_cb != NULL) {
+        BTM_SetAclPktTypes(p_data->set_acl_pkt_types.rmt_addr,
+                           p_data->set_acl_pkt_types.pkt_types,
+                           p_data->set_acl_pkt_types.set_acl_pkt_types_cb);
+    } else {
+        APPL_TRACE_ERROR("%s(), the callback function can't be NULL.", __func__);
+    }
+}
+
 #endif
 /*******************************************************************************
 **

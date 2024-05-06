@@ -1028,9 +1028,15 @@ static int esp_http_client_get_data(esp_http_client_handle_t client)
 
     ESP_LOGD(TAG, "data_process=%lld, content_length=%lld", client->response->data_process, client->response->content_length);
 
+    errno = 0;
     int rlen = esp_transport_read(client->transport, res_buffer->data, client->buffer_size_rx, client->timeout_ms);
     if (rlen >= 0) {
-        http_parser_execute(client->parser, client->parser_settings, res_buffer->data, rlen);
+        // When tls error is ESP_TLS_ERR_SSL_WANT_READ (-0x6900), esp_trasnport_read returns ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT (0x0).
+        // We should not execute http_parser_execute() on this condition as it sets the internal state machine in an
+        // invalid state.
+        if (!(client->is_async && rlen == 0)) {
+            http_parser_execute(client->parser, client->parser_settings, res_buffer->data, rlen);
+        }
     }
     return rlen;
 }
@@ -1253,6 +1259,7 @@ int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client)
     client->response->status_code = -1;
 
     while (client->state < HTTP_STATE_RES_COMPLETE_HEADER) {
+        errno = 0;
         buffer->len = esp_transport_read(client->transport, buffer->data, client->buffer_size_rx, client->timeout_ms);
         if (buffer->len <= 0) {
             if (buffer->len == ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT) {
