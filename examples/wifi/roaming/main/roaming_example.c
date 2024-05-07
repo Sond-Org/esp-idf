@@ -324,7 +324,7 @@ static void esp_bss_rssi_low_handler(void* arg, esp_event_base_t event_base,
 {
 	wifi_event_bss_rssi_low_t *event = event_data;
 
-	ESP_LOGI(TAG, "%s:bss rssi is=%d", __func__, event->rssi);
+	ESP_LOGI(TAG, "%s:bss rssi is=%" PRId32, __func__, event->rssi);
 	/* Lets check channel conditions */
 	rrm_ctx++;
 	if (esp_rrm_send_neighbor_rep_request(neighbor_report_recv_cb, &rrm_ctx) < 0) {
