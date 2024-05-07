@@ -26,6 +26,7 @@
 #include "nvs_flash.h"
 #include "esp_bt.h"
 #include "station_example_main.h"
+#include "esp_pm.h"
 
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
@@ -674,6 +675,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
 void app_main(void)
 {
+
     esp_err_t ret;
 
     // Initialize NVS.
@@ -683,6 +685,26 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
+
+    // Define the power management configuration
+    esp_pm_config_esp32_t pm_config = {
+        .max_freq_mhz = 240,
+        .min_freq_mhz = 40,
+        .light_sleep_enable = false
+    };
+
+    // Apply the configuration
+    esp_err_t result = esp_pm_configure(&pm_config);
+
+    if (result == ESP_OK)
+    {
+        ESP_LOGI(GATTS_TAG, "CPU frequency set to 240 MHz");
+    }
+    else
+    {
+        ESP_LOGE(GATTS_TAG, "Failed to set CPU frequency");
+        return;
+    }
 
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 
