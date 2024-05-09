@@ -20,6 +20,13 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
+#include "esp_timer.h"
+
+#define DUMP_INTERVAL_MS 60000 // Adjust according to your interval
+#define SLEEP_INTERVAL_MS 1000 // Time to sleep between iterations
+
+int64_t last_dump = 0;
+
 /* The examples use WiFi configuration that you can set via project configuration menu
 
    If you'd rather not, just change the below entries to strings with
@@ -90,6 +97,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_BEACON_TIMEOUT) {
         ESP_LOGW(TAG, "Beacon timeout");
         print_free_heap_size();
+        esp_wifi_statis_dump(0xFFFF);
 
         ESP_LOGW(TAG, "Disconnecting and reconnecting to the AP");
         esp_wifi_disconnect();
@@ -137,7 +145,9 @@ void wifi_init_sta(void)
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-    // ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+    ESP_LOGI(TAG, "Requesting to set bandwidth to 20MHz");
+    ESP_ERROR_CHECK(esp_wifi_set_bandwidth(ESP_IF_WIFI_STA, WIFI_BW_HT20));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start() );
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
@@ -163,6 +173,26 @@ void wifi_init_sta(void)
     }
 }
 
+void monitor_wifi_stats()
+{
+    // Infinite loop for monitoring
+    while (true)
+    {
+        // Get the current timestamp in milliseconds
+        int64_t current_time = esp_timer_get_time() / 1000;
+
+        // Check if it's time to dump Wi-Fi statistics
+        if ((current_time - last_dump) >= DUMP_INTERVAL_MS)
+        {
+            last_dump = current_time;
+            esp_wifi_statis_dump(0xFFFF); // Dumps Wi-Fi statistics
+        }
+
+        // Sleep for the defined interval to save CPU cycles
+        vTaskDelay(pdMS_TO_TICKS(SLEEP_INTERVAL_MS));
+    }
+}
+
 void init_wifi(void)
 {
     //Initialize NVS
@@ -176,4 +206,7 @@ void init_wifi(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
     print_free_heap_size();
+
+    // Start monitoring Wi-Fi statistics in a separate task
+    xTaskCreate(monitor_wifi_stats, "wifi_monitor_task", 4096, NULL, 5, NULL);
 }

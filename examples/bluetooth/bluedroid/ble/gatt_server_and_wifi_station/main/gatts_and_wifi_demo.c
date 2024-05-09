@@ -756,6 +756,8 @@ void app_main(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
 
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
     init_wifi();
 
     return;
