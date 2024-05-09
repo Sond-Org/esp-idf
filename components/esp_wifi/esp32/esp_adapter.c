@@ -223,7 +223,7 @@ static void * wifi_thread_semphr_get_wrapper(void)
         }
     }
 
-    ESP_LOGV(TAG, "thread sem get: sem=%p", sem);
+    // ESP_LOGV(TAG, "thread sem get: sem=%p", sem);
     return (void*)sem;
 }
 
