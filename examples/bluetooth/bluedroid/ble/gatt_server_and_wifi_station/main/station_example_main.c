@@ -99,6 +99,16 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         print_free_heap_size();
         esp_wifi_statis_dump(0xFFFF);
 
+        wifi_ap_record_t ap_info;
+        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK)
+        {
+            ESP_LOGI(TAG, "RSSI: %d", ap_info.rssi);
+        }
+        else
+        {
+            ESP_LOGW(TAG, "Failed to obtain AP info");
+        }
+
         ESP_LOGW(TAG, "Disconnecting and reconnecting to the AP");
         esp_wifi_disconnect();
         esp_wifi_connect();
