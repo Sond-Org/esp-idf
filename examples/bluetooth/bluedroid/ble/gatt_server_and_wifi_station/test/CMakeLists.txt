@@ -1,9 +1,6 @@
 # This is the project CMakeLists.txt file for the test subproject
 cmake_minimum_required(VERSION 3.16)
 
-# set(COMPONENTS main)
-# list(APPEND EXTRA_COMPONENT_DIRS "../components")
-
 # Include the components directory of the main application:
 set(EXTRA_COMPONENT_DIRS "../components")
 
