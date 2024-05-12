@@ -15,12 +15,14 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "station_example_main.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
 #include "esp_timer.h"
+
+#include "station_example_main.h"
+#include "ble_channel_task_handler.h"
 
 #define DUMP_INTERVAL_MS 60000 // Adjust according to your interval
 #define SLEEP_INTERVAL_MS 1000 // Time to sleep between iterations
@@ -80,7 +82,18 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
+    {
+        if (ble_channel_task != NULL)
+        {
+            xTaskNotifyGive(ble_channel_task);
+        } else {
+            ESP_LOGE(TAG, "BLE channel task handle is NULL");
+        }
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    {
         if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
             esp_wifi_connect();
             s_retry_num++;
@@ -89,12 +102,16 @@ static void event_handler(void *arg, esp_event_base_t event_base,
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
         }
         ESP_LOGI(TAG,"connect to the AP fail");
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
+    {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_BEACON_TIMEOUT) {
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_BEACON_TIMEOUT)
+    {
         ESP_LOGW(TAG, "Beacon timeout");
         print_free_heap_size();
         esp_wifi_statis_dump(0xFFFF);
