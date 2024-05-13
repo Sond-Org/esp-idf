@@ -68,6 +68,11 @@
                                         TaskHandle_t * const pxCreatedTask,
                                         const BaseType_t xCoreID );
 
+    BaseType_t xTaskCreateRestrictedPinnedToCore( const TaskParameters_t * const pxTaskDefinition,
+                                                TaskHandle_t *pxCreatedTask,
+                                                const BaseType_t xCoreID);
+
+
 #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 
 #if ( configSUPPORT_STATIC_ALLOCATION == 1 )
