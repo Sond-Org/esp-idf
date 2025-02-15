@@ -950,11 +950,14 @@ esp_err_t esp_http_client_set_redirection(esp_http_client_handle_t client)
     if (client->location == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGD(TAG, "Redirect to %s", client->location);
+    ESP_LOGI(TAG, "Redirect to %s", client->location);
     esp_err_t err = esp_http_client_set_url(client, client->location);
     if (err == ESP_OK) {
         client->redirect_counter ++;
         client->process_again = 1;  // used only in the blocking mode (when esp_http_client_perform() is called)
+    }
+    else {
+        ESP_LOGE(TAG, "Failed to set redirection URL");
     }
     return err;
 }
@@ -1741,7 +1744,7 @@ void esp_http_client_add_auth(esp_http_client_handle_t client)
     char *auth_header = client->auth_header;
     if (auth_header) {
         http_utils_trim_whitespace(&auth_header);
-        ESP_LOGD(TAG, "UNAUTHORIZED: %s", auth_header);
+        ESP_LOGW(TAG, "UNAUTHORIZED: %s", auth_header);
         client->redirect_counter++;
 #ifdef CONFIG_ESP_HTTP_CLIENT_ENABLE_DIGEST_AUTH
         if (http_utils_str_starts_with(auth_header, "Digest") == 0) {
