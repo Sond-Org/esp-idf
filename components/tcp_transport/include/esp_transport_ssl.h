@@ -45,7 +45,7 @@ void esp_transport_ssl_set_cert_data(esp_transport_handle_t t, const char *data,
 void esp_transport_ssl_set_cert_data_der(esp_transport_handle_t t, const char *data, int len);
 
 /**
- * @brief      Enable the use of certification bundle for server verfication for
+ * @brief      Enable the use of certification bundle for server verification for
  *             an SSL connection.
  *             It must be first enabled in menuconfig.
  *
