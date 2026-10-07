@@ -211,6 +211,18 @@ void esp_transport_ssl_set_keep_alive(esp_transport_handle_t t, esp_transport_ke
  */
 void esp_transport_ssl_set_interface_name(esp_transport_handle_t t, struct ifreq *if_name);
 
+/**
+ * @brief      Set the TLS ciphersuites this transport offers on its next connections
+ *
+ * Sond: lets a client restrict the offer per connection (esp_tls_cfg_t.ciphersuites_list), for example to
+ * make a dual-certificate server pick its RSA chain. NULL restores the mbedTLS default list.
+ *
+ * @param[in]  t                  ssl transport
+ * @param[in]  ciphersuites_list  Zero-terminated array of IANA ciphersuite ids, or NULL. Not copied: it must
+ *                                stay valid while the transport may connect (use a static array).
+ */
+void esp_transport_ssl_set_ciphersuites_list(esp_transport_handle_t t, const int *ciphersuites_list);
+
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
 /**
  * @brief   Session ticket operation
@@ -231,6 +243,33 @@ typedef enum {
  * @note This operation is only available if CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS=y
  */
 esp_err_t esp_transport_ssl_session_ticket_operation(esp_transport_handle_t t, esp_transport_session_ticket_operation_t operation);
+
+/**
+ * @brief      Offer a TLS session for resumption on this transport's next handshake
+ *
+ * Sond: for a session cache that outlives the transport (one entry per server, kept by the caller). The
+ * transport takes ownership of `session` and frees it when it is replaced, cleared or the transport is
+ * destroyed. NULL clears any session set before, so the next handshake is a full one. Do not combine with
+ * esp_transport_ssl_session_ticket_operation() on the same transport.
+ *
+ * @param[in]  t        ssl transport
+ * @param[in]  session  Session from esp_tls_get_client_session() (or rebuilt from one), or NULL
+ *
+ * @return ESP_OK, or ESP_ERR_INVALID_ARG if `t` is not an ssl transport (`session` is freed)
+ */
+esp_err_t esp_transport_ssl_set_client_session(esp_transport_handle_t t, esp_tls_client_session_t *session);
+
+/**
+ * @brief      Export the TLS session of this transport's current connection
+ *
+ * mbedTLS exports a connection's session once; a second call for the same connection returns NULL.
+ *
+ * @param[in]  t   ssl transport
+ *
+ * @return A new session the caller frees with esp_tls_free_client_session(), or NULL (not connected over
+ *         TLS, already exported, or out of memory)
+ */
+esp_tls_client_session_t *esp_transport_ssl_get_client_session(esp_transport_handle_t t);
 #endif // CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
 
 #ifdef __cplusplus
