@@ -1779,6 +1779,17 @@ esp_tls_client_session_t *esp_http_client_get_tls_client_session(esp_http_client
 }
 #endif // CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
 
+// Defined by tcp_transport (transport.c) but declared only in its private header.
+int esp_transport_get_socket(esp_transport_handle_t t);
+
+int esp_http_client_get_socket(esp_http_client_handle_t client)
+{
+    if (client == NULL || client->state < HTTP_STATE_CONNECTED || client->transport == NULL) {
+        return -1;
+    }
+    return esp_transport_get_socket(client->transport);
+}
+
 esp_http_client_transport_t esp_http_client_get_transport_type(esp_http_client_handle_t client)
 {
     if (!strcasecmp(client->connection_info.scheme, "https") ) {
