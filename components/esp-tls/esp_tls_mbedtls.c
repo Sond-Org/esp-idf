@@ -746,8 +746,8 @@ esp_err_t set_client_config(const char *hostname, size_t hostlen, esp_tls_cfg_t 
 #ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
     ESP_LOGD(TAG, "Enabling client-side tls session ticket support");
     mbedtls_ssl_conf_session_tickets(&tls->conf, MBEDTLS_SSL_SESSION_TICKETS_ENABLED);
-    mbedtls_ssl_conf_renegotiation(&tls->conf, MBEDTLS_SSL_RENEGOTIATION_ENABLED);
-
+    /* Sond: session tickets do not need renegotiation, and mbedtls_ssl_conf_renegotiation() only exists when
+     * CONFIG_MBEDTLS_SSL_RENEGOTIATION is set (which already enables it above), so this is left to that option. */
 #endif /* CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS */
 
     if (cfg->crt_bundle_attach != NULL) {
