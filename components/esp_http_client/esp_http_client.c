@@ -1740,6 +1740,45 @@ bool esp_http_client_is_chunked_response(esp_http_client_handle_t client)
     return client->response->is_chunked;
 }
 
+static esp_transport_handle_t http_client_https_transport(esp_http_client_handle_t client)
+{
+    return client ? esp_transport_list_get_transport(client->transport_list, "https") : NULL;
+}
+
+esp_err_t esp_http_client_set_tls_ciphersuites(esp_http_client_handle_t client, const int *ciphersuites_list)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_transport_handle_t ssl = http_client_https_transport(client);
+    if (ssl == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    esp_transport_ssl_set_ciphersuites_list(ssl, ciphersuites_list);
+    return ESP_OK;
+}
+
+#ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+esp_err_t esp_http_client_set_tls_client_session(esp_http_client_handle_t client, esp_tls_client_session_t *session)
+{
+    esp_transport_handle_t ssl = http_client_https_transport(client);
+    if (ssl == NULL) {
+        esp_tls_free_client_session(session);
+        return client == NULL ? ESP_ERR_INVALID_ARG : ESP_ERR_INVALID_STATE;
+    }
+    return esp_transport_ssl_set_client_session(ssl, session);
+}
+
+esp_tls_client_session_t *esp_http_client_get_tls_client_session(esp_http_client_handle_t client)
+{
+    if (client == NULL || client->state < HTTP_STATE_CONNECTED || client->transport == NULL ||
+        client->transport != http_client_https_transport(client)) {
+        return NULL;
+    }
+    return esp_transport_ssl_get_client_session(client->transport);
+}
+#endif // CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+
 esp_http_client_transport_t esp_http_client_get_transport_type(esp_http_client_handle_t client)
 {
     if (!strcasecmp(client->connection_info.scheme, "https") ) {

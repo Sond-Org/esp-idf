@@ -739,6 +739,52 @@ esp_err_t esp_http_client_get_url(esp_http_client_handle_t client, char *url, co
  */
 esp_err_t esp_http_client_get_chunk_length(esp_http_client_handle_t client, int *len);
 
+/**
+ * @brief      Set the TLS ciphersuites this client offers on its next https connections
+ *
+ * Sond: per-client restriction of the offer (esp_tls_cfg_t.ciphersuites_list). It stays in effect for every
+ * later https connection of this client, including redirects, until changed. NULL restores the default list.
+ *
+ * @param[in]  client             The esp_http_client handle
+ * @param[in]  ciphersuites_list  Zero-terminated array of IANA ciphersuite ids, or NULL. Not copied: it must
+ *                                stay valid for the client's lifetime (use a static array).
+ *
+ * @return ESP_OK, ESP_ERR_INVALID_ARG, or ESP_ERR_INVALID_STATE if the client has no https transport
+ */
+esp_err_t esp_http_client_set_tls_ciphersuites(esp_http_client_handle_t client, const int *ciphersuites_list);
+
+#ifdef CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+struct esp_tls_client_session;
+
+/**
+ * @brief      Offer a TLS session for resumption on this client's next https handshake
+ *
+ * Sond: for a session cache kept outside the client (keyed by server), so that a client created per stream
+ * can still resume. The client takes ownership of `session` (also on error). NULL clears a session set
+ * before, so the next handshake is a full one. Call before esp_http_client_open() for every request whose
+ * server differs from the previous one: a session must only be offered to the server it came from. Do not
+ * combine with `save_client_session`.
+ *
+ * @param[in]  client   The esp_http_client handle
+ * @param[in]  session  A session from esp_http_client_get_tls_client_session() for the same server, or NULL
+ *
+ * @return ESP_OK, ESP_ERR_INVALID_ARG, or ESP_ERR_INVALID_STATE if the client has no https transport
+ */
+esp_err_t esp_http_client_set_tls_client_session(esp_http_client_handle_t client, struct esp_tls_client_session *session);
+
+/**
+ * @brief      Export the TLS session of the client's current https connection
+ *
+ * Valid once the connection is up (after esp_http_client_open()). mbedTLS exports a connection's session
+ * once; a second call for the same connection returns NULL.
+ *
+ * @param[in]  client   The esp_http_client handle
+ *
+ * @return A new session the caller frees with esp_tls_free_client_session(), or NULL
+ */
+struct esp_tls_client_session *esp_http_client_get_tls_client_session(esp_http_client_handle_t client);
+#endif // CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+
 #ifdef __cplusplus
 }
 #endif

@@ -493,6 +493,12 @@ void esp_transport_ssl_set_keep_alive(esp_transport_handle_t t, esp_transport_ke
     ssl->cfg.keep_alive_cfg = (tls_keep_alive_cfg_t *) keep_alive_cfg;
 }
 
+void esp_transport_ssl_set_ciphersuites_list(esp_transport_handle_t t, const int *ciphersuites_list)
+{
+    GET_SSL_FROM_TRANSPORT_OR_RETURN(ssl, t);
+    ssl->cfg.ciphersuites_list = ciphersuites_list;
+}
+
 void esp_transport_ssl_set_interface_name(esp_transport_handle_t t, struct ifreq *if_name)
 {
     GET_SSL_FROM_TRANSPORT_OR_RETURN(ssl, t);
@@ -599,5 +605,31 @@ esp_err_t esp_transport_ssl_session_ticket_operation(esp_transport_handle_t t, e
             break;
     }
     return ESP_OK;
+}
+
+esp_err_t esp_transport_ssl_set_client_session(esp_transport_handle_t t, esp_tls_client_session_t *session)
+{
+    transport_esp_tls_t *ssl = ssl_get_context_data(t);
+    if (!ssl) {
+        esp_tls_free_client_session(session);
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (ssl->session_ticket != session) {
+        esp_tls_free_client_session(ssl->session_ticket);
+    }
+    ssl->session_ticket = session;
+    ssl->cfg.client_session = session;
+    return ESP_OK;
+}
+
+esp_tls_client_session_t *esp_transport_ssl_get_client_session(esp_transport_handle_t t)
+{
+    transport_esp_tls_t *ssl = ssl_get_context_data(t);
+    esp_tls_conn_state_t state;
+    if (!ssl || !ssl->tls || ssl->cfg.is_plain_tcp || esp_tls_get_conn_state(ssl->tls, &state) != ESP_OK ||
+        state != ESP_TLS_DONE) {
+        return NULL;
+    }
+    return esp_tls_get_client_session(ssl->tls);
 }
 #endif // CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
