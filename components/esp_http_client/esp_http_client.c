@@ -1585,14 +1585,28 @@ static esp_err_t esp_http_client_request_send(esp_http_client_handle_t client, i
     }
 
     int wlen = client->buffer_size_tx - first_line_len;
-    while ((client->header_index = http_header_generate_string(client->request->headers, client->header_index, client->request->buffer->data + first_line_len, &wlen))) {
+    while (true) {
+        int next_index = http_header_generate_string(client->request->headers, client->header_index, client->request->buffer->data + first_line_len, &wlen);
         if (wlen <= 0) {
-            break;
-        }
-        if (first_line_len) {
+            /* Sond: no header fitted after the request line (a long URL, e.g. a ~2 KB signed redirect target).
+             * Upstream ended the loop here and never sent anything, so the server waited for a request until the
+             * client timed out. Send the request line on its own and retry the headers in a full buffer. */
+            if (first_line_len > 0) {
+                wlen = first_line_len;
+                first_line_len = 0;
+                next_index = client->header_index;
+            } else {
+                ESP_LOGE(TAG, "A request header does not fit in the %d-byte buffer", client->buffer_size_tx);
+                esp_http_client_close(client);
+                return ESP_ERR_HTTP_WRITE_DATA;
+            }
+        } else if (next_index == 0) {
+            break;  /* every header and the terminator were written */
+        } else if (first_line_len) {
             wlen += first_line_len;
             first_line_len = 0;
         }
+        client->header_index = next_index;
         client->request->buffer->data[wlen] = 0;
         ESP_LOGD(TAG, "Write header[%d]: %s", client->header_index, client->request->buffer->data);
 
@@ -1778,6 +1792,17 @@ esp_tls_client_session_t *esp_http_client_get_tls_client_session(esp_http_client
     return esp_transport_ssl_get_client_session(client->transport);
 }
 #endif // CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS
+
+// Defined by tcp_transport (transport.c) but declared only in its private header.
+int esp_transport_get_socket(esp_transport_handle_t t);
+
+int esp_http_client_get_socket(esp_http_client_handle_t client)
+{
+    if (client == NULL || client->state < HTTP_STATE_CONNECTED || client->transport == NULL) {
+        return -1;
+    }
+    return esp_transport_get_socket(client->transport);
+}
 
 esp_http_client_transport_t esp_http_client_get_transport_type(esp_http_client_handle_t client)
 {

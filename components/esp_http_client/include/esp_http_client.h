@@ -621,6 +621,18 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client);
 esp_http_client_transport_t esp_http_client_get_transport_type(esp_http_client_handle_t client);
 
 /**
+ * @brief      Get the socket of the client's current connection (Sond), e.g. to read its peer address with getpeername().
+ *             The socket stays owned by the client: do not read, write or close it.
+ *
+ * @param[in]  client   The esp_http_client handle
+ *
+ * @return
+ *     - The socket file descriptor while the client is connected (plain or TLS)
+ *     - -1 if the client is NULL or not connected
+ */
+int esp_http_client_get_socket(esp_http_client_handle_t client);
+
+/**
  * @brief      Set redirection URL.
  *             When received the 30x code from the server, the client stores the redirect URL provided by the server.
  *             This function will set the current URL to redirect to enable client to execute the redirection request.
